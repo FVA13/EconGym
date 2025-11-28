@@ -44,9 +44,9 @@ class EconObservations:
 
         # Add economic indicators
         wage_rate = getattr(self.market, 'WageRate', 0.0) if self.market else 0.0
+        price_level = getattr(self.market, 'price', 1.0) if self.market else 1.0
         lending_rate = getattr(self.bank, 'lending_rate', 0.0345) if self.bank else 0.0345
         deposit_rate = getattr(self.bank, 'deposit_rate', 0.0345) if self.bank else 0.0345
-        price_level = getattr(self.market, 'price', 1.0) if self.market else 1.0
 
         economic_indicators = np.concatenate([
             wage_rate.flatten(),

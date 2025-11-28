@@ -292,13 +292,24 @@ class Runner:
             "house_work_hours": self.eval_env.households.ht,
             "gov_spending": self.eval_env.main_gov.gov_spending,
             "house_age": self.eval_env.households.age,
+            "deposit_rate": self.eval_env.bank.deposit_rate,
+            "lending_rate": self.eval_env.bank.lending_rate,
         }
-        if hasattr(self, 'pension_gov_agent'):
-            self.econ_dict['retire_age'] = self.eval_env.pension_gov.retire_age
-            self.econ_dict['contribution_rate'] = self.eval_env.pension_gov.contribution_rate
-            self.econ_dict['pension_fund'] = self.eval_env.pension_gov.pension_fund
-            self.econ_dict['old_percent'] = self.eval_env.pension_gov.old_percent
-            self.econ_dict['dependency_ratio'] = self.eval_env.pension_gov.dependency_ratio
+
+        if 'central_bank' in self.eval_env.government:
+            cb = self.eval_env.government['central_bank']
+            self.econ_dict['inflation_rate'] = self.eval_env.inflation_rate
+            self.econ_dict['inflation_gap'] = cb.inflation_gap
+            self.econ_dict['growth_gap'] = cb.growth_gap
+            self.econ_dict['base_interest_rate'] = cb.base_interest_rate
+            self.econ_dict['reserve_ratio'] = cb.reserve_ratio
+        if 'pension' in self.eval_env.government:
+            pension = self.eval_env.government['pension']
+            self.econ_dict['retire_age'] = pension.retire_age
+            self.econ_dict['contribution_rate'] = pension.contribution_rate
+            self.econ_dict['pension_fund'] = pension.pension_fund
+            self.econ_dict['old_percent'] = pension.old_percent
+            self.econ_dict['dependency_ratio'] = pension.dependency_ratio
 
     def sum_non_uniform_dict(self, sequences):
         total_sum = 0
@@ -320,15 +331,19 @@ class Runner:
                      "house_reward", "social_welfare", "per_gdp", "income_gini", "firm_production",
                      "wealth_gini", "years", "GDP", "gov_spending", "house_total_tax", "house_income_tax",
                      "house_wealth_tax", "house_wealth", "house_income", "house_consumption", "house_pension",
-                     "house_work_hours", "total_labor", "WageRate", "price", "house_age", "firm_reward", "bank_reward"]
+                     "house_work_hours", "total_labor", "WageRate", "price", "house_age", "firm_reward", "bank_reward", "deposit_rate", "lending_rate"]
 
-        if hasattr(self, 'pension_gov_agent'):
+        if 'pension' in self.eval_env.government:
             eval_econ += [
                 "retire_age",
                 "contribution_rate",
                 "pension_fund",
                 "old_percent",
                 "dependency_ratio"
+            ]
+        if 'central_bank' in self.eval_env.government:
+            eval_econ += [
+                "inflation_rate", "inflation_gap", "growth_gap", "base_interest_rate", "reserve_ratio"
             ]
         obs_dict = self.eval_env.reset()
         episode_econ_dict = dict(zip(eval_econ, [[] for i in range(len(eval_econ))]))

@@ -349,15 +349,15 @@ class Government(BaseEntity):
             return np.log1p(np.exp(-np.abs(x))) + np.maximum(x, 0.0)
 
         # Inflation deviation (symmetric quadratic penalty)
-        inflation_gap = actual_inflation - target_inflation
-        loss_inflation = weight_inflation * (inflation_gap ** 2)
+        self.inflation_gap = actual_inflation - target_inflation
+        loss_inflation = weight_inflation * (self.inflation_gap ** 2)
 
         # Growth deviation
-        growth_gap = actual_growth - target_growth
+        self.growth_gap = actual_growth - target_growth
 
         # Smooth decomposition into below-target and above-target parts
-        below_target = softplus(-growth_gap / smoothness) * smoothness  # >0 if growth < target
-        above_target = softplus(growth_gap / smoothness) * smoothness  # >0 if growth > target
+        below_target = softplus(-self.growth_gap / smoothness) * smoothness  # >0 if growth < target
+        above_target = softplus(self.growth_gap / smoothness) * smoothness  # >0 if growth > target
 
         # Asymmetric growth penalties
         loss_growth = weight_growth_low * (below_target ** 2) + weight_growth_high * (above_target ** 2)

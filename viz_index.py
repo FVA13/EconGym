@@ -46,6 +46,13 @@ house_work_hour_data = {}
 house_age_data = {}
 house_pension_data = {}
 
+inflation_data = {}
+base_interest_rate_data = {}
+reserve_ratio_data = {}
+deposit_rate_data = {}
+lending_rate_data = {}
+
+
 # Initialize lists/dictionaries for chart management
 charts = []
 datasets = {}
@@ -89,6 +96,14 @@ def process_data():
                 house_age_data[strategy_name] = data.get('house_age', [])
                 house_pension_data[strategy_name] = data.get('house_pension', [])
 
+                inflation_data[strategy_name] = data.get('inflation_rate', [])
+                base_interest_rate_data[strategy_name] = data.get('base_interest_rate', [])
+                reserve_ratio_data[strategy_name] = data.get('reserve_ratio', [])
+                deposit_rate_data[strategy_name] = data.get('deposit_rate', [])
+                lending_rate_data[strategy_name] = data.get('lending_rate', [])
+
+        
+
 
 # Map data metric names to their corresponding data storage dictionaries
 # Used for dynamic chart generation based on user selection
@@ -110,6 +125,11 @@ datasets = {
     'Households Age': house_age_data,
     'Households Distribution': house_wealth_data,
     'Households Pension': house_pension_data,
+    'Inflation Rate': inflation_data,
+    'Base Interest Rate': base_interest_rate_data,
+    'Reserve Ratio': reserve_ratio_data,
+    'Deposit Rate': deposit_rate_data,
+    'Lending Rate': lending_rate_data,
 }
 
 
@@ -518,7 +538,14 @@ def generate_chart():
         elif chart_name == 'Households Distribution':
             # Household Distribution: Show distribution of households by wealth/age
             chart = distribution_chart(data, category_data, house_age_dist, years)
-
+        elif chart_name in [
+            'Inflation Rate',
+            'Base Interest Rate',
+            'Reserve Ratio',
+            'Deposit Rate',
+            'Lending Rate'
+        ]:
+            chart = generate_line_chart(data, years, chart_name)
         else:
             # Default case: Use basic line chart for metrics without specialized formatting
             chart = generate_line_chart(data, years, chart_name)

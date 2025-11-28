@@ -258,7 +258,8 @@ class EconomicSociety:
         self.market.reset(households_n=self.households.households_n, GDP=gov_agent.GDP,
                           households_at=self.households.at, real_debt_rate=gov_agent.real_debt_rate)
 
-        self.last_price_index = 1
+        # self.last_price_index = 1
+        self.last_price_index = self.market.calculate_price_index(self.market.price)
         self.ini_income_gini = self.gini_coef(self.households.income)
         self.ini_wealth_gini = self.gini_coef(self.households.at)
         self.done = False

@@ -342,7 +342,7 @@
                 <h3 style="text-align:center">Select Charts to Generate:</h3>
 
                 <form action="/generate_charts" method="post" style="text-align:center; margin-top:20px;">
-                    <select id="charts" name="charts[]" multiple size="16" style="width: 450px;">
+                    <select id="charts" name="charts[]" multiple size="24" style="width: 450px;">
                         <option value="1_GDP">1_GDP</option>
                         <option value="2_Wealth Gini">2_Wealth Gini</option>
                         <option value="3_Income Gini">3_Income Gini</option>
@@ -359,6 +359,11 @@
                         <option value="14_Households WageRate">14_Households WageRate</option>
                         <option value="15_Households Distribution">15_Households Distribution</option>
                         <option value="16_Households Pension">16_Households Pension</option>
+                        <option value="17_Inflation Rate">17_Inflation Rate</option>
+                        <option value="18_Base Interest Rate">18_Base Interest Rate</option>
+                        <option value="19_Reserve Ratio">19_Reserve Ratio</option>
+                        <option value="20_Deposit Rate">20_Deposit Rate</option>
+                        <option value="21_Lending Rate">21_Lending Rate</option>
                     </select><br><br>
 
                     <button class='btn1' type="button" onclick="generateChart()">Generate Chart</button>

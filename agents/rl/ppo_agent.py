@@ -57,6 +57,7 @@ class ppo_agent:
         self.args = args
         self.agent_name = agent_name
         self.agent_type = type
+        
 
         env_agent_name = "households" if agent_name == "households" else agent_name
 
@@ -69,48 +70,56 @@ class ppo_agent:
             self.agent = getattr(self.envs, env_agent_name)
             self.obs_dim = self.agent.observation_space.shape[0]
             self.action_dim = self.agent.action_space.shape[-1]
-
+            
+        self.state_rms = RunningMeanStd(shape=(self.obs_dim,))
+        self.step_counter = 0
+        self.max_warmup_steps = 1000
+        self.normalizer_applied = False
         if self.args.cuda:
             self.device = "cuda"
         else:
             self.device = "cpu"
-
-        self.net = mlp_net(state_dim=self.obs_dim, num_actions=self.action_dim).to(self.device)
 
         # Initialize the MLP network
         self.net = mlp_net(state_dim=self.obs_dim, num_actions=self.action_dim).to(self.device)
 
         # Flag to choose whether to load an existing policy or not
         self.load_exist_policy = False  # Set to True to load the trained policy
+        # self.load_exist_policy = True
 
         # Check if the policy should be loaded
         if self.load_exist_policy:
+            path = None
+    
             if agent_name == "households":
-                # Load policy for household agent based on its type
                 if "OLG" in self.envs.households.type:
-                    # Load PPO policy for OLG type households
-                    self.net.load_state_dict(
-                        torch.load("agents/models/trained_policy/ppo_OLG/ppo_net.pt", weights_only=True))
+                    path = "agents/models/trained_policy/ppo_OLG/ppo_net.pt"
                 elif "ramsey" in self.envs.households.type:
-                    # Load PPO policy for Ramsey type households
-                    self.net = mlp_net(state_dim=self.obs_dim, num_actions=3).to(self.device)  # Action dim = 3
-                    self.net.load_state_dict(
-                        torch.load("agents/models/trained_policy/ppo_Ramsey/ppo_net.pt", weights_only=True))
-
+                    # Re-init net for Ramsey specific action dim
+                    self.net = mlp_net(state_dim=self.obs_dim, num_actions=3).to(self.device)
+                    path = "agents/models/trained_policy/ppo_Ramsey/ppo_net.pt"
+    
             elif agent_name == "government":
-                # Load policy for government agent if type is 'tax'
-                if self.envs.government.type == "tax":
-                    self.net.load_state_dict(
-                        torch.load("agents/models/bc_ppo/100/gdp/run8/ppo_net.pt", weights_only=True))
+                if "tax" in self.envs.government:
+                    path = "agents/models/bc_ppo/100/gdp/run8/ppo_net.pt"
+                if "central_bank" in self.envs.government:
+                    path = "agents/models/optimal_monetary/100/run46/government_ppo_net.pt"
+    
+            elif agent_name == "bank":
+                if "commercial" in self.envs.bank.type:
+                    path = "agents/models/optimal_monetary/100/run46/bank_ppo_net.pt"
+    
+            # Call the encapsulated loader
+            if path:
+                self.load_model(path)
+
 
         self.optimizer = torch.optim.Adam(self.net.parameters(), lr=self.args.p_lr, eps=1e-5)
         lambda_function = lambda epoch: 0.97 ** (epoch // 10)
         self.scheduler = LambdaLR(self.optimizer, lr_lambda=lambda_function)
         self.on_policy = True
-        self.state_rms = RunningMeanStd(shape=(self.obs_dim,))
-        self.step_counter = 0
-        self.max_warmup_steps = 1000
-        self.normalizer_applied = False
+        
+        
 
     def compute_advantage(self, gamma, lmbda, td_delta):
         td_delta = td_delta.detach().numpy()
@@ -204,3 +213,39 @@ class ppo_agent:
 
     def save(self, dir_path):
         torch.save(self.net.state_dict(), str(dir_path) + '/' + self.agent_name + '_ppo_net.pt')
+
+    def load_model(self, path):
+        """
+        Safely loads network weights and restoration statistics.
+        Handles 'mean'/'std' keys to prevent RuntimeErrors.
+        """
+        # Load the checkpoint
+        state_dict = torch.load(path, map_location=self.device, weights_only=True)
+    
+        # === Handle Normalization Stats (mean/std) ===
+        if "mean" in state_dict and "std" in state_dict:
+            # Extract and remove normalization keys from dict
+            loaded_mean = state_dict["mean"]
+            loaded_std = state_dict["std"]
+        
+            # Update RunningMeanStd (convert tensor to numpy)
+            mean_np = loaded_mean.cpu().numpy()
+            std_np = loaded_std.cpu().numpy()
+
+            self.state_rms.mean = mean_np
+            self.state_rms.var = std_np ** 2
+            self.state_rms.count = 1e6
+
+            self.net.set_normalizer(mean_np, std_np)
+
+            self.normalizer_applied = True
+            self.step_counter = self.max_warmup_steps + 1
+            
+        
+            print(f"[INFO] Loaded model with Normalization from: {path}")
+        else:
+            print(f"[INFO] Loaded model weights (no norm stats) from: {path}")
+    
+        # === Load Network Weights ===
+        # strict=True ensures the architecture matches exactly
+        self.net.load_state_dict(state_dict)
