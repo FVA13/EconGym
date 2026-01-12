@@ -1,4 +1,4 @@
-# 🌐 EconGym: A Scalable AI Testbed with Diverse Economic Tasks
+# (Fork from https://github.com/tsinghua-fib-lab/ACL24-EconAgent) 🌐 EconGym: A Scalable AI Testbed with Diverse Economic Tasks
 
 
 ![EconGym Overview](document/img/EconGym%20V2.jpg "EconGym Structure Overview")

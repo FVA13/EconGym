@@ -227,3 +227,24 @@ Trainer:                                # Store parameters related to policy tra
   llm_name: "gpt-4o-mini"               # Name of the LLM to be used for decision-making or interaction, {"deepseek-chat", "gpt-4o", ...}
   api_key: ""                           # API key for the LLM service. Can be set here or via environment variable; either option will take effect.
 
+  # --- Pretrained Transformer adapter (marl-macro-modeling) ---
+  # Set role alg to "transformer" (e.g., gov_alg: "transformer") and provide these.
+  # If `transformer_ckpt_path` ends with ".ckpt", we load via `EconomicPolicyModel.load_from_checkpoint(...)`
+  # (same as `marl-macro-modeling/examples/infer_model.ipynb`) and derive dims automatically.
+  # If it is a raw state_dict checkpoint (".pt"/".pth"), you must set the architecture fields below.
+  marl_project_root: "/Users/filin_va/ML/projects/marl-macro-modeling"                 # e.g. "/Users/you/.../marl-macro-modeling"
+  transformer_ckpt_path: "/Users/filin_va/ML/projects/marl-macro-modeling/models/model-epoch=099.ckpt"             # e.g. "/path/to/model-epoch=099.ckpt" OR "/path/to/checkpoint.pt"
+  transformer_state_dim: 0
+  transformer_action_dim: 0
+  transformer_num_tasks: 0
+  transformer_d_model: 128
+  transformer_nhead: 4
+  transformer_num_layers: 4
+  transformer_max_seq_len: 64
+  transformer_model_params_dim: 0
+  transformer_task_id: 0
+  transformer_model_params: null        # optional list[float]
+  transformer_state_description: null   # optional list[str] of marl STATE tokens, length <= transformer_state_dim
+  transformer_action_description: null  # optional list[str] of marl ACTION tokens, length <= transformer_action_dim
+  transformer_outputs_normalized: False # If True, Runner rescales [-1,1] -> [real_action_min,max] (RL-style)
+  transformer_debug: False              # Print a sample action each step for quick sanity checking

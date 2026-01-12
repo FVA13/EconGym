@@ -7,6 +7,7 @@ from agents.rl.ddpg_agent import ddpg_agent
 from agents.real_data.real_data import real_agent
 from agents.llm.llm_agent import llm_agent
 from agents.data_based_agent import data_agent
+from agents.transformer.transformer_agent import transformer_agent
 from utils.seeds import set_seeds
 from utils.config import load_config
 import os
@@ -22,6 +23,7 @@ agent_algorithms = {
     "llm": llm_agent,
     "data_based": data_agent,
     "ddpg": ddpg_agent,
+    "transformer": transformer_agent,
     "saez": rule_agent,
     "us_federal": rule_agent,
 }

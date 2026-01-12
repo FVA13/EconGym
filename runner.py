@@ -87,7 +87,11 @@ class Runner:
         - Scale them into [action_min, action_max] as defined by the agent.
         """
         rl_agent_list = ['ppo', 'ddpg', 'sac']  # extendable list of RL agents
-        if getattr(policy, "name", None) not in rl_agent_list:
+
+        # Some non-RL agents (e.g., pretrained transformers) may also output normalized actions in (-1, 1)
+        # and require the same scaling to real_action_min/max to be meaningful in EconGym.
+        should_scale = getattr(policy, "name", None) in rl_agent_list or bool(getattr(policy, "outputs_normalized", False))
+        if not should_scale:
             return action  # skip if this is not an RL agent
     
         # Locate the corresponding agent entity
@@ -147,6 +151,37 @@ class Runner:
         raw_actions_dict, processed_actions_dict = act(self.agents_policy, obs_dict_tensor)
         return raw_actions_dict, processed_actions_dict
 
+    # ------------------------------
+    # Optional reward feedback hook (for sequence models, etc.)
+    # ------------------------------
+    def agents_observe(self, rewards_dict, done: bool):
+        """
+        Provide (reward, done) feedback to agents that implement an optional observe() method.
+
+        This is a no-op for existing agents (RL/rule/LLM/BC) unless they define observe().
+        """
+
+        def _extract_reward(agent_name, sub_key=None):
+            if agent_name == "government":
+                # rewards_dict["government"] is a dict keyed by gov_type
+                if sub_key is None:
+                    # fallback: sum across gov subagents
+                    return float(sum(rewards_dict["government"].values()))
+                return rewards_dict["government"].get(sub_key, 0.0)
+            # households reward can be vector-like; banks/market often scalar or vector
+            return rewards_dict.get(agent_name, 0.0)
+
+        def _observe(policy, agent_name: str, sub_key=None):
+            if isinstance(policy, dict):
+                for k, subpol in policy.items():
+                    _observe(subpol, agent_name, sub_key=k)
+                return
+            if hasattr(policy, "observe") and callable(getattr(policy, "observe")):
+                policy.observe(_extract_reward(agent_name, sub_key=sub_key), done=done)
+
+        for agent_name, policy in self.agents_policy.items():
+            _observe(policy, agent_name)
+
     def run(self):
         obs_dict = self.envs.reset()
 
@@ -168,6 +203,7 @@ class Runner:
                 obs_dict_tensor = self._get_tensor_inputs(obs_dict)
                 action_dict, processed_actions_dict = self.agents_get_action(obs_dict_tensor)
                 next_obs_dict, reward_dict, done = self.envs.step(processed_actions_dict, t)
+                self.agents_observe(reward_dict, done)
 
                 on_policy_process = all(self.envs.recursive_decompose_dict(self.agents_policy, lambda a: a.on_policy))
 
@@ -358,6 +394,7 @@ class Runner:
                     obs_dict_tensor = self._get_tensor_inputs(obs_dict)
                     action_dict, processed_actions_dict = self.agents_get_action(obs_dict_tensor)
                     next_obs_dict, rewards_dict, done = self.eval_env.step(processed_actions_dict, t)
+                    self.agents_observe(rewards_dict, done)
                 t += 1
                 self.init_economic_dict(rewards_dict)
 
