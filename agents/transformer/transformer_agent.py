@@ -8,6 +8,8 @@ from typing import Any, Optional
 import numpy as np
 import torch
 
+from loguru import logger as _loguru_logger
+
 
 @dataclass(frozen=True)
 class TransformerAdapterSpec:
@@ -93,6 +95,20 @@ class transformer_agent:
         if marl_root not in sys.path:
             sys.path.insert(0, marl_root)
 
+        # marl-macro-modeling config uses loguru and calls `logger.remove(0)` at import time.
+        # Depending on the host app's logging setup, handler id 0 may not exist and loguru raises.
+        # Make this import robust by temporarily making `remove()` tolerant to missing handler ids.
+        _orig_remove = getattr(_loguru_logger, "remove", None)
+        if callable(_orig_remove):
+            def _safe_remove(handler_id=None):  # type: ignore[no-redef]
+                try:
+                    return _orig_remove(handler_id)
+                except ValueError:
+                    # Ignore "There is no existing handler with id X"
+                    return None
+
+            _loguru_logger.remove = _safe_remove  # type: ignore[assignment]
+
         # Token-ID helpers can differ across marl revisions.
         # Prefer helper fns if present; otherwise fall back to direct mappings.
         try:
@@ -111,6 +127,10 @@ class transformer_agent:
 
             self._state_token_id = _state_token_id
             self._action_token_id = _action_token_id
+
+        # Restore original loguru behavior after successful marl imports.
+        if callable(_orig_remove):
+            _loguru_logger.remove = _orig_remove  # type: ignore[assignment]
 
         # --- Load model the same way as `examples/infer_model.ipynb` whenever possible ---
         ckpt_path = str(spec.checkpoint_path)

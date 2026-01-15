@@ -1,0 +1,133 @@
+## Benchmark meta-config for `eval_compare.py`
+##
+## Notes:
+## - This config does NOT change any environment YAMLs under `cfg/`.
+## - It only drives how `eval_compare.py` samples (env, role->alg variants) and runs them.
+## - "roles" correspond to EconGym roles:
+##   - households, market, bank
+##   - government sub-roles: tax | pension | central_bank (depending on env)
+
+
+environments_to_benchmark:
+  - estate_tax
+  - inflation_control
+  - optimal_monetary
+  - optimal_tax
+  - work_life_well_being
+  - pension_gap
+  - universal_basic_income
+
+# Training horizon (same for all envs)
+n_epochs: 5  # for each env
+epoch_length: 300
+wandb: false
+cuda: false
+# Seeds to run each variant with
+seeds: [1, 2, 3, 4, 5]
+# Maximum number of unique variants per environment (canonical variants count toward this)
+max_launches_per_env: 3
+# RNG seed used to sample "extra" (non-canonical) variants
+sampling_seed: 0
+
+environments:
+  estate_tax:
+    # Which roles you want the transformer to be benchmarked for (table/plots focus)
+    transformer_roles: [pension]
+    # Defaults for non-target roles in canonical variants
+    default_role_algs:
+      households: bc
+      market: rule_based
+      bank: rule_based
+      pension: rule_based
+    # Which algorithms are allowed per role in THIS environment
+    role_algorithms:
+      households: [bc, rule_based, ppo, sac, ddpg]
+      market: [rule_based]
+      bank: [rule_based]
+      pension: [rule_based, ppo, sac, ddpg, transformer]
+    # (visualization-only) Which metrics to plot as dynamics
+    metrics_to_plot: [gov_reward, social_welfare, GDP, house_income]
+
+  inflation_control:
+    transformer_roles: [central_bank]
+    default_role_algs:
+      households: bc
+      market: rule_based
+      bank: ppo
+      central_bank: rule_based
+    role_algorithms:
+      households: [bc, rule_based, ppo, sac, ddpg]
+      market: [rule_based]
+      bank: [rule_based, ppo, sac, ddpg, transformer]
+      central_bank: [rule_based, ppo, sac, ddpg, transformer]
+    metrics_to_plot: [gov_reward, inflation_rate, GDP, social_welfare]
+
+  optimal_monetary:
+    transformer_roles: [central_bank, bank]
+    default_role_algs:
+      households: bc
+      market: rule_based
+      bank: rule_based
+      central_bank: rule_based
+    role_algorithms:
+      households: [bc, rule_based, ppo, sac, ddpg]
+      market: [rule_based]
+      bank: [rule_based, ppo, sac, ddpg, transformer]
+      central_bank: [rule_based, ppo, sac, ddpg, transformer]
+    metrics_to_plot: [gov_reward, bank_reward, GDP, social_welfare]
+
+  optimal_tax:
+    transformer_roles: [tax]
+    default_role_algs:
+      households: bc
+      market: rule_based
+      bank: rule_based
+      tax: rule_based
+    role_algorithms:
+      households: [bc, rule_based, ppo, sac, ddpg]
+      market: [rule_based]
+      bank: [rule_based]
+      tax: [rule_based, ppo, sac, ddpg, saez, us_federal, transformer]
+    metrics_to_plot: [gov_reward, GDP, social_welfare, income_gini]
+
+  work_life_well_being:
+    transformer_roles: [households]
+    default_role_algs:
+      households: rule_based
+      market: rule_based
+      bank: rule_based
+      pension: rule_based
+    role_algorithms:
+      households: [rule_based, ppo, sac, ddpg, bc, transformer]
+      market: [rule_based]
+      bank: [rule_based]
+      pension: [rule_based]
+    metrics_to_plot: [house_reward, social_welfare, house_work_hours, house_consumption]
+
+  pension_gap:
+    transformer_roles: [pension]
+    default_role_algs:
+      households: bc
+      market: rule_based
+      bank: rule_based
+      pension: rule_based
+    role_algorithms:
+      households: [bc, rule_based, ppo, sac, ddpg]
+      market: [rule_based]
+      bank: [rule_based]
+      pension: [rule_based, ppo, sac, ddpg, transformer]
+    metrics_to_plot: [gov_reward, GDP, social_welfare, pension_fund]
+
+  universal_basic_income:
+    transformer_roles: [tax]
+    default_role_algs:
+      households: bc
+      market: rule_based
+      bank: rule_based
+      tax: rule_based
+    role_algorithms:
+      households: [bc, rule_based, ppo, sac, ddpg]
+      market: [rule_based]
+      bank: [rule_based]
+      tax: [rule_based, ppo, sac, ddpg, saez, us_federal, transformer]
+    metrics_to_plot: [gov_reward, GDP, social_welfare, house_income]

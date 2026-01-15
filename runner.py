@@ -4,8 +4,6 @@ import random
 import numpy as np
 import torch
 import os, sys
-# import wandb
-import swanlab as wandb
 import json
 from omegaconf import ListConfig
 
@@ -54,12 +52,17 @@ class Runner:
                                                        task=self.envs.problem_scene)
         save_args(path=self.model_path, args=self.args)
         self.wandb = self.args.wandb
+        self._wandb = None
 
         if self.wandb:
+            # Import lazily to avoid expensive/permission-sensitive imports when disabled.
+            # `swanlab` can attempt to collect hardware metadata (sysctl/psutil) which may fail in sandboxes.
+            import swanlab as wandb  # type: ignore
+            self._wandb = wandb
             from omegaconf import OmegaConf
             config_dict = OmegaConf.to_container(self.args, resolve=True)
 
-            wandb.init(
+            self._wandb.init(
                 config=config_dict,
                 project="EconGym",
                 entity="EconGym",     # TODO: Replace with your swanlab account or team name
@@ -244,8 +247,8 @@ class Runner:
                 economic_idicators_dict = self._evaluate_agent()
 
                 if self.wandb:
-                    wandb.log(economic_idicators_dict)
-                    wandb.log(sum_loss)
+                    self._wandb.log(economic_idicators_dict)
+                    self._wandb.log(sum_loss)
 
                 firm_reward = np.mean([v for k, v in economic_idicators_dict.items() if k.startswith("firm_reward")])  # if multiple firms, print mean reward. show multiple reward in wandb or swanlab
 
@@ -264,7 +267,7 @@ class Runner:
                 self.envs.recursive_decompose_dict(self.agents_policy, lambda a: a.save(dir_path=self.model_path))
 
         if self.wandb:
-            wandb.finish()
+            self._wandb.finish()
 
     def sub_agent_training(self, agent_name, agent_policy, transitions, loss):
         if agent_policy.on_policy == True:
