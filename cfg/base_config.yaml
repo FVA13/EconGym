@@ -233,7 +233,7 @@ Trainer:                                # Store parameters related to policy tra
   # (same as `marl-macro-modeling/examples/infer_model.ipynb`) and derive dims automatically.
   # If it is a raw state_dict checkpoint (".pt"/".pth"), you must set the architecture fields below.
   marl_project_root: "/Users/filin_va/ML/projects/marl-macro-modeling"                 # e.g. "/Users/you/.../marl-macro-modeling"
-  transformer_ckpt_path: "/Users/filin_va/ML/projects/marl-macro-modeling/models/model-epoch=099.ckpt"             # e.g. "/path/to/model-epoch=099.ckpt" OR "/path/to/checkpoint.pt"
+  transformer_ckpt_path: "/Users/filin_va/ML/projects/marl-macro-modeling/checkpoints/dacf6998e2368da115e25307ef9fae9f/model-epoch=299.ckpt"             # e.g. "/path/to/model-epoch=099.ckpt" OR "/path/to/checkpoint.pt"
   transformer_state_dim: 0
   transformer_action_dim: 0
   transformer_num_tasks: 0

@@ -117,16 +117,18 @@ class transformer_agent:
             self._state_token_id = state_token_id
             self._action_token_id = action_token_id
         except Exception:
-            from lib.dataset import ACTION_MAPPING, STATE_MAPPING  # type: ignore
-
-            def _state_token_id(name: str) -> int:
-                return int(STATE_MAPPING.get(name, STATE_MAPPING.get("Empty", 0)))
-
-            def _action_token_id(name: str) -> int:
-                return int(ACTION_MAPPING.get(name, ACTION_MAPPING.get("Empty", 0)))
-
-            self._state_token_id = _state_token_id
-            self._action_token_id = _action_token_id
+            # ACTION_MAPPING has been moved to Tokenizer class in lib.dataset
+            try:
+                from lib.dataset import Tokenizer  # type: ignore
+                tokenizer = Tokenizer()
+                # Use the tokenizer's instance methods
+                self._state_token_id = tokenizer.state_token_id
+                self._action_token_id = tokenizer.action_token_id
+            except Exception as e:
+                raise ImportError(
+                    f"Could not import Tokenizer from lib.dataset. "
+                    f"Original error: {e}"
+                )
 
         # Restore original loguru behavior after successful marl imports.
         if callable(_orig_remove):
@@ -294,14 +296,11 @@ class transformer_agent:
                 model_params=self.model_params,
             )
             action = out[0, -1].detach().cpu().numpy()
+            # _loguru_logger.debug(f"action: {action} (before clipping)")
 
         action = np.clip(action, -1.0, 1.0).astype(np.float32)
         action = self._adapt_action_to_env(obs_tensor, action)
-        if self.debug:
-            try:
-                print(f"[transformer_agent] role={self.agent_name}:{self.agent_type} action(sample)={action if np.ndim(action)==1 else action[0]}")
-            except Exception:
-                pass
+        # _loguru_logger.debug(f"[transformer_agent] role={self.agent_name}:{self.agent_type} action(sample)={action if np.ndim(action)==1 else action[0]}")
 
         # Keep last action in model's action_dim space for recurrence.
         # If we sliced/padded for the env, re-pad to model action dim so the history stays consistent.

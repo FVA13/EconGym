@@ -258,15 +258,51 @@ def _train_runner(runner: Runner, *, n_epochs: int, epoch_length: int) -> None:
 def _merge_episode_series(episodes: list[list[float]]) -> list[float]:
     if not episodes:
         return []
-    max_len = max(len(x) for x in episodes)
+    # Flatten and ensure all elements are scalars
+    normalized_episodes = []
+    for s in episodes:
+        # Ensure s is a flat list of floats
+        flat_list = []
+        for item in s:
+            try:
+                if isinstance(item, (list, tuple, np.ndarray)):
+                    # If item is an array/list, take the mean to scalarize
+                    arr = np.asarray(item, dtype=np.float32)
+                    flat_list.append(float(np.mean(arr)) if arr.size > 0 else float("nan"))
+                elif isinstance(item, (int, float, np.floating, np.integer)):
+                    flat_list.append(float(item))
+                else:
+                    # Try to convert to float, fallback to nan
+                    flat_list.append(float(item) if item is not None else float("nan"))
+            except Exception:
+                flat_list.append(float("nan"))
+        normalized_episodes.append(flat_list)
+    
+    if not normalized_episodes:
+        return []
+    
+    max_len = max(len(x) for x in normalized_episodes) if normalized_episodes else 0
     if max_len == 0:
         return []
     mat = []
-    for s in episodes:
-        arr = np.asarray(s, dtype=np.float32)
-        if arr.shape[0] < max_len:
-            arr = np.pad(arr, (0, max_len - arr.shape[0]), constant_values=np.nan)
-        mat.append(arr)
+    for s in normalized_episodes:
+        try:
+            # Ensure s is a 1D array of floats
+            arr = np.asarray(s, dtype=np.float32)
+            if arr.ndim > 1:
+                # If somehow multi-dimensional, flatten it
+                arr = arr.flatten()
+            if arr.shape[0] < max_len:
+                arr = np.pad(arr, (0, max_len - arr.shape[0]), constant_values=np.nan)
+            mat.append(arr)
+        except Exception as e:
+            # If conversion fails, create a NaN-filled array of the right length
+            logger.warning(f"Failed to convert episode series to array: {e}, using NaN padding")
+            mat.append(np.full(max_len, np.nan, dtype=np.float32))
+    
+    if not mat:
+        return []
+    
     mat = np.stack(mat, axis=0)  # [E, T]
     return np.nanmean(mat, axis=0).tolist()
 
@@ -401,7 +437,13 @@ def build_variants(eval_cfg: dict[str, Any]) -> list[dict[str, Any]]:
     rng = random.Random(int(eval_cfg.get("sampling_seed", 0) or 0))
 
     all_variants: list[dict[str, Any]] = []
+    envs_cfg = (eval_cfg.get("environments") or {})
     for env_name in env_list:
+        # Skip environments that are not configured (e.g., commented out)
+        if env_name not in envs_cfg:
+            logger.warning(f"Skipping environment '{env_name}' - not found in environments config (may be commented out)")
+            continue
+        
         cfg_e = _env_cfg(eval_cfg, env_name)
         max_variants = int(cfg_e.get("max_launches_per_env", max_launches_default) or 0)
         if max_variants <= 0:
@@ -913,7 +955,12 @@ def visualize(run_dir: Path) -> Path:
 
     # --- Dynamics plots over steps (mean +/- std across seeds and launches) ---
     env_list = list(eval_cfg.get("environments_to_benchmark", []))
+    envs_cfg = (eval_cfg.get("environments") or {})
     for env_name in env_list:
+        # Skip environments that are not configured (e.g., commented out)
+        if env_name not in envs_cfg:
+            logger.warning(f"Skipping visualization for environment '{env_name}' - not found in environments config (may be commented out)")
+            continue
         env_cfg = _env_cfg(eval_cfg, env_name)
         metrics_to_plot: list[str] = list(env_cfg.get("metrics_to_plot", []) or [])
         transformer_roles: list[str] = list(env_cfg.get("transformer_roles", []) or [])
